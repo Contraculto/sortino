@@ -6,5 +6,6 @@ The only file you need is sorto-the-sorter.js
 Edit your origin and destination directories
 Install dependencies with npm update
 Run node sorto-the-sorter.js
-
-If it fails please let me know.
+Visit http://localhost:8080 in any browser
+Click to move and refresh
+If anything fails an error will show in the terminal
