@@ -1,0 +1,24 @@
+{
+  "name": "sorto-the-sorter",
+  "version": "0.2.0",
+  "description": "Sort images in folders",
+  "main": "sorto-the-sorter.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Contraculto/sorto-the-sorter.git"
+  },
+  "keywords": [
+    "images",
+    "sorting"
+  ],
+  "author": "Rodrigo Lanas",
+  "license": "ISC",
+  "homepage": "https://github.com/Contraculto/sorto-the-sorter#readme",
+  "dependencies": {
+    "underscore": "^1.8.3",
+    "httpdispatcher": "^1.0.0"
+  }
+}
