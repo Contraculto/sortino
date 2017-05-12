@@ -2,16 +2,12 @@
 Simple utility to help you sort images into different directories. Written in node
 
 ### Usage
-The only file you need is sorto-the-sorter.js
+Can be installed globally.
 
-Edit your origin and destination directories
+Run it, open in browser.
 
-Install dependencies with npm update
+Go to /settings and set you source and destination directories.
 
-Run node sorto-the-sorter.js
+Images are taken from the source dir and move to folders in the destination dir.
 
-Visit http://localhost:8080 in any browser
-
-Click to move and refresh
-
-If anything fails an error will show in the terminal
+You can create as many directories as you want, they automatically appear as options in the browser.
