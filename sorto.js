@@ -35,7 +35,7 @@ dispatcher.onGet("/", function(req, res) {
 	res.writeHead(200, {'Content-Type': 'text/html'})
 	var files = fs.readdirSync(settings.source)
 	fs.readFile(settings.source + '/' + files[0], (e, data) => {
-		if (e) throw e
+		if ( e ) throw e
 
 		var html_head = `
 			<html>
@@ -52,7 +52,7 @@ dispatcher.onGet("/", function(req, res) {
 					<script src="https://code.jquery.com/jquery-3.0.0.min.js" integrity="sha256-JmvOoLtYsmqlsWxa7mDSLMwa6dZ9rrIdtrrVYRnDRH0=" crossorigin="anonymous"></script>
 					<script>
 						$("a").on("click", function() {
-							console.log("click");
+							console.log("	_ Click");
 							var data = {img: $('#img').data('img'), dir: $(this).data("dir")}
 							$.post("/move", data, function(res) {
 								console.log(res);
@@ -70,15 +70,13 @@ dispatcher.onGet("/", function(req, res) {
 			_.each(files, function(dest) {
 				if ( fs.lstatSync(settings.dest + "/" + dest).isDirectory() ) {
 					//console.log('<a href="javascript:void(0);" data-dir="' + dest + '">' + dest + '</a>')
-					html_control += '<a href="javascript:void(0);" data-dir="' + dest + '">' + dest + '</a>'
+					html_control += '<a href="javascript:void(0);" data-dir="' + dest + '">' + dest.replace(/_[0-9]+/, '') + '</a>'
 				} else {
 					//console.log('reg file')
 				}
 			})
 			html_control += '</div>'
-			
-			
-			
+
 			res.end(html_head + content + html_control + html_foot)
 		})
 	})
@@ -89,7 +87,7 @@ dispatcher.onGet("/", function(req, res) {
 
 dispatcher.onPost("/move", function(req, res) {
 	if ( req.params ) {
-		console.log("	Moving " + req.params.img + " to /" + req.params.dir)
+		console.log("	_ " + req.params.img + " -> /" + req.params.dir)
 		
 		fs.access(settings.dest + "/" + req.params.dir, fs.F_OK, function(err) {
 
@@ -98,13 +96,13 @@ dispatcher.onPost("/move", function(req, res) {
 		
 					var files = fs.readdirSync(settings.source)
 					fs.readFile(settings.source + "/" + files[0], (e, data) => {
-						console.log("	> " + files[0])
+						console.log("\n	_ " + files[0])
 						res.end('<img id="img" data-img="'+files[0]+'" src="data:img/jpg;base64,' + data.toString('base64') + '" alt="' + files[0] + '" />')
 					})
 			} else {
 				fs.mkdir(settings.dest + '/' + req.params.dir, function(e) {
 					if ( e ) {
-						console.log("	Could not create directory")
+						console.log("	_ Could not create directory")
 						//console.log(e)
 					} else {
 						if ( moveFile(req.params.img, req.params.dir) ) {
@@ -115,7 +113,7 @@ dispatcher.onPost("/move", function(req, res) {
 								res.end('<img id="img" data-img="' + files[0] + '" src="data:img/jpg;base64,' + data.toString('base64') + '" alt="' + files[0] + '" />')
 							});
 						} else {
-							console.log("	Could not move image")
+							console.log("	_ Could not move image")
 						}
 					}
 				})
@@ -139,11 +137,11 @@ dispatcher.onGetPost("/settings", function(req, res) {
 
 	if ( req.method == "POST" ) {
 		if ( req.params && typeof req.params.port != "undefined" && req.params.port != "" && typeof req.params.source != "undefined" && req.params.source != "" && typeof req.params.dest != "undefined" && req.params.dest != "" ) {
-			fs.writeFile("settings", req.params.port + "\n" + req.params.source + "\n" + req.params.source, function(err) {
+			fs.writeFile("settings", req.params.port + "\n" + req.params.source + "\n" + req.params.dest, function(err) {
 				settings.port = req.params.port
 				settings.source = req.params.source
-				settings.dest = req.params.source
-				console.log("	Settings saved");
+				settings.dest = req.params.dest
+				console.log("\n	_ Settings saved\n");
 				//opn("http://localhost:" + req.params.source);
 			})
 		}
@@ -186,19 +184,26 @@ dispatcher.onGetPost("/settings", function(req, res) {
 //	CONSOLE MENU
 
 function menu() {
-	rl.question("	[1] Open browser [2] Help [3] Exit\r\n", (answer) => {
+	rl.question("\n	[1] SORT [2] Settings [3] Help [4] Exit\n        : ", (answer) => {
 		if ( answer == "1" ) {
 			//console.log("http://localhost:" + settings.port)
 			opn("http://localhost:" + settings.port)
 			menu()
 		} else if ( answer == "2" ) {
-			console.log("	Sorto the sorter")
+			opn("http://localhost:" + settings.port + "/settings")
+			menu()
+		} else if ( answer == "3" ) {
+			console.log("\n	Sorto the sorter")
 			console.log("	This doesn't exist yet. Please refer to:")
 			console.log("	https://github.com/Contraculto/sorto-the-sorter")
-			menu();
-		} else if ( answer == "3" ) {
-			console.log("	Thank you for sorting!")
-			rl.close();
+			menu()
+		} else if ( answer == "4" ) {
+			console.log("\n	Thank you for sorting!")
+			rl.close()
+			process.exit()
+		} else {
+			console.log("\n	Invalid option")
+			menu()
 		}
 	})
 }
@@ -223,10 +228,18 @@ const rl = readline.createInterface({
 
 //	RUN THE PROGRAM
 
+console.log('')
+console.log('	  ██████  ▒█████   ██▀███  ▄▄▄█████▓ ▒█████  ')
+console.log('	▒██    ▒ ▒██▒  ██▒▓██ ▒ ██▒▓  ██▒ ▓▒▒██▒  ██▒')
+console.log('	░ ▓██▄   ▒██░  ██▒▓██ ░▄█ ▒▒ ▓██░ ▒░▒██░  ██▒')
+console.log('	  ▒   ██▒▒██   ██░▒██▀▀█▄  ░ ▓██▓ ░ ▒██   ██░')
+console.log('	▒██████▒▒░ ████▓▒░░██▓ ▒██▒  ▒██▒ ░ ░ ████▓▒░')
+console.log('	▒ ▒▓▒ ▒ ░░ ▒░▒░▒░ ░ ▒▓ ░▒▓░  ▒ ░░   ░ ▒░▒░▒░ ')
+console.log('	░ ░▒  ░ ░  ░ ▒ ▒░   ░▒ ░ ▒░    ░      ░ ▒ ▒░ ')
+console.log('	░  ░  ░  ░ ░ ░ ▒    ░░   ░   ░      ░ ░ ░ ▒  ')
+console.log('	      ░      ░ ░     ░                  ░ ░  ')
+//	http://patorjk.com/software/taag/#p=display&f=Bloody&t=Sorto
 console.log()
-console.log("	SORTO THE SORTER")
-console.log("	Reporting for duty")
-console.log("	--");
 console.log()
 fs.open("settings", "r+", function(err, fd) {
 	if (err) {
@@ -244,6 +257,7 @@ fs.open("settings", "r+", function(err, fd) {
 			console.log("	Unexpected error, exiting.")
 			console.log("	" + err)
 			rl.close()
+			process.exit()
 		}
 	} else {
 		fs.stat("settings", function(error, stats) {
