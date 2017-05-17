@@ -1,4 +1,5 @@
-//	SORTO THE SORTER
+//	Sortino
+//	(SORTO THE SORTER)
 //	Sort images in directories
 
 //	Rodrigo Lanas
@@ -193,12 +194,12 @@ function menu() {
 			opn("http://localhost:" + settings.port + "/settings")
 			menu()
 		} else if ( answer == "3" ) {
-			console.log("\n	Sorto the sorter")
+			console.log("\n	Sortino")
 			console.log("	This doesn't exist yet. Please refer to:")
-			console.log("	https://github.com/Contraculto/sorto-the-sorter")
+			console.log("	https://github.com/Contraculto/sortino")
 			menu()
 		} else if ( answer == "4" ) {
-			console.log("\n	Thank you for sorting!")
+			console.log("\n	Good bye!")
 			rl.close()
 			process.exit()
 		} else {
@@ -238,7 +239,7 @@ console.log('	▒ ▒▓▒ ▒ ░░ ▒░▒░▒░ ░ ▒▓ ░▒▓�
 console.log('	░ ░▒  ░ ░  ░ ▒ ▒░   ░▒ ░ ▒░    ░     ▒ ░░ ░░   ░ ▒░  ░ ▒ ▒░ ')
 console.log('	░  ░  ░  ░ ░ ░ ▒    ░░   ░   ░       ▒ ░   ░   ░ ░ ░ ░ ░ ▒  ')
 console.log('	      ░      ░ ░     ░               ░           ░     ░ ░  ')
-console.log()
+
 /*
 console.log('')
 console.log('	  ██████  ▒█████   ██▀███  ▄▄▄█████▓ ▒█████  ')
@@ -252,8 +253,10 @@ console.log('	░  ░  ░  ░ ░ ░ ▒    ░░   ░   ░      ░ ░ 
 console.log('	      ░      ░ ░     ░                  ░ ░  ')
 //	http://patorjk.com/software/taag/#p=display&f=Bloody&t=Sorto
 */
+
 console.log()
 console.log()
+
 fs.open("settings", "r+", function(err, fd) {
 	if (err) {
 		console.log();

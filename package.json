@@ -1,5 +1,5 @@
 {
-  "name": "sorto",
+  "name": "sortino",
   "version": "1.1.0",
   "description": "Sort images in folders",
   "bin": {
@@ -15,8 +15,15 @@
     "url": "https://github.com/Contraculto/sortino.git"
   },
   "keywords": [
+    "image",
     "images",
-    "sorting"
+    "sorting",
+    "sortino",
+    "node",
+    "nodejs",
+    "jpg",
+    "png",
+    "gif"
   ],
   "author": "Rodrigo Lanas",
   "license": "ISC",
