@@ -1,6 +1,6 @@
 {
   "name": "sortino",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "description": "Sort images in folders",
   "bin": "./index.js",
   "preferGlobal": "true",
