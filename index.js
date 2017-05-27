@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 //	Sortino
 //	(SORTO THE SORTER)
 //	Sort images in directories
@@ -17,6 +18,37 @@ var opn = require('opn')
 const osHomedir = require('os-homedir')
 
 var settings = {}
+
+//	HTML
+
+var html_head = `
+	<html>
+		<head>
+			<title>Sortino - Image sorting</title>
+		</head>
+		<body>`
+
+var html_foot= `
+			<style>
+				body{margin:10px;background:#fff;font-family:sans-serif}
+				#command{margin-bottom:10px;padding:10px 10px 0 10px;background:#192B43}
+				#command a{display:inline-block;margin:0 20px 10px 0;text-decoration:none;color:#fff}
+				#command a:hover{text-decoration:underline}
+				img{}
+			</style>
+			<script src="https://code.jquery.com/jquery-3.0.0.min.js" integrity="sha256-JmvOoLtYsmqlsWxa7mDSLMwa6dZ9rrIdtrrVYRnDRH0=" crossorigin="anonymous"></script>
+			<script>
+				$("a").on("click", function() {
+					console.log("	_ Click");
+					var data = {img: $('#img').data('img'), dir: $(this).data("dir")}
+					$.post("/move", data, function(res) {
+						console.log(res);
+						$("#img").replaceWith(res);
+					});
+				});
+			</script>
+		</body>
+	</html>`
 
 //	MOVE FILE
 
@@ -38,37 +70,9 @@ dispatcher.onGet("/", function(req, res) {
 	fs.readFile(settings.source + '/' + files[0], (e, data) => {
 		if ( e ) throw e
 
-		var html_head = `
-			<html>
-				<head>
-					<title>Sorto - ` + files[0] + `</title>
-				</head>
-				<body>`
-		var html_foot= `
-					<style>
-						#command{position:fixed;left:10px;top:10px;padding:10px;background:rgba(0, 0, 0, 0.5)}
-						#command a{margin:10px;color:#fff;font-weight:bold;text-decoration:none}
-						img{margin:50px 0 0 10px}
-					</style>
-					<script src="https://code.jquery.com/jquery-3.0.0.min.js" integrity="sha256-JmvOoLtYsmqlsWxa7mDSLMwa6dZ9rrIdtrrVYRnDRH0=" crossorigin="anonymous"></script>
-					<script>
-						$("a").on("click", function() {
-							console.log("	_ Click");
-							var data = {img: $('#img').data('img'), dir: $(this).data("dir")}
-							$.post("/move", data, function(res) {
-								console.log(res);
-								$("#img").replaceWith(res);
-							});
-						});
-						$()
-					</script>
-				</body>
-			</html>`
-
 		var html_control = '<div id="command">'
-		var content = '<img id="img" data-img="' + files[0] + '" src="data:img/jpg;base64,' + data.toString('base64') + '" alt="' + files[0] + '" />';
-		var dest_folders = fs.readdir(settings.dest, function(err, files) {
-			_.each(files, function(dest) {
+		var dest_folders = fs.readdir(settings.dest, function(err, folders) {
+			_.each(folders, function(dest) {
 				if ( fs.lstatSync(settings.dest + "/" + dest).isDirectory() ) {
 					//console.log('<a href="javascript:void(0);" data-dir="' + dest + '">' + dest + '</a>')
 					html_control += '<a href="javascript:void(0);" data-dir="' + dest + '">' + dest.replace(/_[0-9]+/, '') + '</a>'
@@ -77,8 +81,9 @@ dispatcher.onGet("/", function(req, res) {
 				}
 			})
 			html_control += '</div>'
+			var content = '<img id="img" data-img="' + files[0] + '" src="data:img/jpg;base64,' + data.toString('base64') + '" alt="' + files[0] + '" />';
 
-			res.end(html_head + content + html_control + html_foot)
+			res.end(html_head + html_control + content + html_foot)
 		})
 	})
 
@@ -148,37 +153,30 @@ dispatcher.onGetPost("/settings", function(req, res) {
 		}
 	}
 
-	var html = `
-		<html>
-				<head>
-					<title>Sorto - Settings</title>
-				</head>
-				<body>
+	var content = `
 					<style>
-						#command{position:fixed;left:10px;top:10px;padding:10px;background:rgba(0, 0, 0, 0.5)}
-						#command a{margin:10px;color:#fff;font-weight:bold;text-decoration:none}
-						img{margin:50px 0 0 10px}
+						body{margin:10px;background:#fff;font-family:sans-serif}
+						input{border:1px solid silver;padding:5px;width:300px}
 					</style>
 					<form method="post" target="">
+						<h2>Sortino Settings</h2>
 						<p>
-							<label for="port">Port</label>
+							<label for="port">Port</label><br>
 							<input type="text" name="port" id="port" value="` + settings.port + `">
 						</p>
 						<p>
-							<label for="source">Source dir</label>
+							<label for="source">Source dir</label><br>
 							<input type="text" name="source" id="source" value="` + settings.source + `">
 						</p>
 						<p>
-							<label for="dest">Destination dir</label>
+							<label for="dest">Destination dir</label><br>
 							<input type="text" name="dest" id="dest" value="` + settings.dest + `">
 						</p>
 						<p>
 							<input type="submit" value="Save">
 						</p>
-					</form>
-				</body>
-			</html>`
-	res.end(html);
+					</form>`
+	res.end(html_head + content + html_foot);
 })
 
 
@@ -194,9 +192,10 @@ function menu() {
 			opn("http://localhost:" + settings.port + "/settings")
 			menu()
 		} else if ( answer == "3" ) {
-			console.log("\n	Sortino")
-			console.log("	This doesn't exist yet. Please refer to:")
-			console.log("	https://github.com/Contraculto/sortino")
+			//console.log("\n	Sortino")
+			//console.log("	This doesn't exist yet. Please refer to:")
+			//console.log("	https://github.com/Contraculto/sortino")
+			opn("https://github.com/Contraculto/sortino/blob/master/README.md")
 			menu()
 		} else if ( answer == "4" ) {
 			console.log("\n	Good bye!")
@@ -267,7 +266,10 @@ fs.open("settings", "r+", function(err, fd) {
 			settings.dest = osHomedir() + "/Pictures/out"
 			fs.writeFile("settings", settings.port + "\n" + settings.source + "\n" + settings.source, function(err) {
 				console.log("	Settings file created, opening settings page");
-				opn("http://localhost:" + settings.port + "/settings");
+				server.listen(settings.port, function() {
+					opn("http://localhost:" + settings.port + "/settings");
+					menu()
+				})
 			})
 		} else {
 			console.log("	Unexpected error, exiting.")
