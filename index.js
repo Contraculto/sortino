@@ -52,7 +52,7 @@ function isSafeFilename(name) {
 // Validate that a resolved child path is strictly within a parent directory (cross-platform safe)
 function isPathWithin(parent, child) {
   const rel = path.relative(path.resolve(parent), path.resolve(child));
-  return rel.length > 0 && !rel.startsWith('..') && !path.isAbsolute(rel);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 // HTML templates
@@ -176,13 +176,13 @@ function renderSettings(req, res) {
   const content = `
     <style>
       body { margin: 10px; background: #fff; font-family: sans-serif; }
-      input[type="text"] { border: 1px solid silver; padding: 5px; width: 300px; }
+      input[type="text"], input[type="number"] { border: 1px solid silver; padding: 5px; width: 300px; }
     </style>
     <form method="post">
       <h2>Sortino Settings</h2>
       <p>
         <label for="port">Port</label><br>
-        <input type="number" name="port" id="port" min="1" max="65535" value="${escapeHtml(settings.port || '')}">
+        <input type="number" name="port" id="port" min="1" max="65535" step="1" value="${escapeHtml(settings.port || '')}">
       </p>
       <p>
         <label for="source">Source dir</label><br>
