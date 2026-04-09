@@ -2,13 +2,13 @@
 // Sortino - Sort images in directories
 // Rodrigo Lanas <rodrigo@contraculto.com>
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const readline = require('readline');
-const express = require('express');
-const open = require('open');
-const rateLimit = require('express-rate-limit');
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { createInterface } from 'readline/promises';
+import express from 'express';
+import open from 'open';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
@@ -16,7 +16,8 @@ app.use(rateLimit({ windowMs: 60 * 1000, limit: 300 }));
 
 let settings = {};
 
-const SETTINGS_FILE = 'settings';
+const SETTINGS_DIR = path.join(os.homedir(), '.sortino');
+const SETTINGS_FILE = path.join(SETTINGS_DIR, 'settings');
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 const MIME_TYPES = {
@@ -37,10 +38,30 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Validate that a filename component contains no path separators, null bytes, or traversal sequences
+function isSafeFilename(name) {
+  return typeof name === 'string' &&
+    name.length > 0 &&
+    !name.includes('/') &&
+    !name.includes('\\') &&
+    !name.includes('\0') &&
+    name !== '.' &&
+    name !== '..';
+}
+
+// Validate that a resolved child path is strictly within a parent directory (cross-platform safe)
+function isPathWithin(parent, child) {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 // HTML templates
 
-const htmlHead = `<html>
+const htmlHead = `<!DOCTYPE html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sortino - Image sorting</title>
   </head>
   <body>`;
@@ -49,15 +70,25 @@ const htmlFoot = `
     <style>
       body { margin: 10px; background: #fff; font-family: sans-serif; }
       #command { margin-bottom: 10px; padding: 10px 10px 0 10px; background: #192B43; }
-      #command a { display: inline-block; margin: 0 20px 10px 0; text-decoration: none; color: #fff; }
+      #command a { display: inline-block; margin: 0 20px 10px 0; text-decoration: none; color: #fff; cursor: pointer; }
       #command a:hover { text-decoration: underline; }
     </style>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script>
-      $("a").on("click", function() {
-        const data = { img: $('#img').data('img'), dir: $(this).data('dir') };
-        $.post("/move", data, function(res) {
-          $("#img").replaceWith(res);
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('#command a').forEach(link => {
+          link.addEventListener('click', () => {
+            const imgEl = document.getElementById('img');
+            if (!imgEl) return;
+            const params = new URLSearchParams({ img: imgEl.dataset.img, dir: link.dataset.dir });
+            fetch('/move', { method: 'POST', body: params })
+              .then(res => res.text())
+              .then(html => {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = html;
+                imgEl.replaceWith(tmp.firstElementChild || tmp);
+              })
+              .catch(err => console.error('Move failed:', err));
+          });
         });
       });
     </script>
@@ -65,69 +96,79 @@ const htmlFoot = `
 </html>`;
 
 // Return only image files from a directory
-function listImages(dir) {
-  return fs.readdirSync(dir).filter(
-    f => IMAGE_EXTENSIONS.has(path.extname(f).toLowerCase())
-  );
-}
-
-// Move an image file to a subdirectory of the destination
-function moveFile(img, dir) {
-  const src = path.join(settings.source, img);
-  const dest = path.join(settings.dest, dir, img);
-  fs.renameSync(src, dest);
+async function listImages(dir) {
+  const files = await fs.promises.readdir(dir);
+  return files.filter(f => IMAGE_EXTENSIONS.has(path.extname(f).toLowerCase()));
 }
 
 // Build an <img> tag for the first image in source, or a "done" message
-function nextImageTag() {
-  const files = listImages(settings.source);
+async function nextImageTag() {
+  const files = await listImages(settings.source);
   if (files.length === 0) {
     return '<p>All images sorted!</p>';
   }
   const file = files[0];
   const mime = MIME_TYPES[path.extname(file).toLowerCase()] || 'image/jpeg';
-  const data = fs.readFileSync(path.join(settings.source, file));
+  const data = await fs.promises.readFile(path.join(settings.source, file));
   return `<img id="img" data-img="${escapeHtml(file)}" src="data:${mime};base64,${data.toString('base64')}" alt="${escapeHtml(file)}" />`;
 }
 
 // Main page: display first image with folder navigation
-app.get('/', (req, res) => {
-  const files = listImages(settings.source);
-  if (files.length === 0) {
-    return res.send(htmlHead + '<p>No images found in source directory.</p>' + htmlFoot);
+app.get('/', async (req, res) => {
+  try {
+    const files = await listImages(settings.source);
+    if (files.length === 0) {
+      return res.send(htmlHead + '<p>No images found in source directory.</p>' + htmlFoot);
+    }
+
+    const entries = await fs.promises.readdir(settings.dest, { withFileTypes: true });
+    const folders = entries.filter(e => e.isDirectory()).map(e => e.name);
+
+    let htmlControl = '<div id="command">';
+    for (const folder of folders) {
+      const label = escapeHtml(folder.replace(/_[0-9]+/, ''));
+      htmlControl += `<a href="javascript:void(0);" data-dir="${escapeHtml(folder)}">${label}</a>`;
+    }
+    htmlControl += '</div>';
+
+    res.send(htmlHead + htmlControl + await nextImageTag() + htmlFoot);
+  } catch (err) {
+    console.error('Error serving main page:', err);
+    res.status(500).send(htmlHead + '<p>Error loading page. Check that source and destination directories exist.</p>' + htmlFoot);
   }
-
-  const folders = fs.readdirSync(settings.dest).filter(
-    f => fs.lstatSync(path.join(settings.dest, f)).isDirectory()
-  );
-
-  let htmlControl = '<div id="command">';
-  for (const folder of folders) {
-    const label = escapeHtml(folder.replace(/_[0-9]+/, ''));
-    htmlControl += `<a href="javascript:void(0);" data-dir="${escapeHtml(folder)}">${label}</a>`;
-  }
-  htmlControl += '</div>';
-
-  res.send(htmlHead + htmlControl + nextImageTag() + htmlFoot);
 });
 
 // AJAX: move image to selected folder and return next image tag
-app.post('/move', (req, res) => {
+app.post('/move', async (req, res) => {
   const { img, dir } = req.body;
   if (!img || !dir) {
     return res.status(400).send('Missing parameters');
   }
 
-  console.log(`  _ ${img} -> /${dir}`);
-
-  const destDir = path.join(settings.dest, dir);
-  if (!fs.existsSync(destDir)) {
-    fs.mkdirSync(destDir, { recursive: true });
+  // Reject filenames with null bytes, path separators, or traversal sequences
+  if (!isSafeFilename(img) || !isSafeFilename(dir)) {
+    return res.status(400).send('Invalid parameters');
   }
 
-  moveFile(img, dir);
-  console.log(`\n  _ Next image`);
-  res.send(nextImageTag());
+  // Confirm resolved paths remain within their respective directories
+  const imgPath = path.resolve(settings.source, img);
+  const destDirPath = path.resolve(settings.dest, dir);
+
+  if (!isPathWithin(settings.source, imgPath) || !isPathWithin(settings.dest, destDirPath)) {
+    return res.status(400).send('Invalid parameters');
+  }
+
+  console.log(`  _ ${img} -> /${dir}`);
+
+  try {
+    await fs.promises.mkdir(destDirPath, { recursive: true });
+    await fs.promises.rename(imgPath, path.join(destDirPath, img));
+    console.log(`\n  _ Next image`);
+    res.send(await nextImageTag());
+  } catch (err) {
+    console.error('Error moving file:', err);
+    res.status(500).send('Error moving file');
+  }
 });
 
 // Settings page
@@ -135,13 +176,13 @@ function renderSettings(req, res) {
   const content = `
     <style>
       body { margin: 10px; background: #fff; font-family: sans-serif; }
-      input { border: 1px solid silver; padding: 5px; width: 300px; }
+      input[type="text"], input[type="number"] { border: 1px solid silver; padding: 5px; width: 300px; }
     </style>
     <form method="post">
       <h2>Sortino Settings</h2>
       <p>
         <label for="port">Port</label><br>
-        <input type="text" name="port" id="port" value="${escapeHtml(settings.port || '')}">
+        <input type="number" name="port" id="port" min="1" max="65535" step="1" value="${escapeHtml(settings.port || '')}">
       </p>
       <p>
         <label for="source">Source dir</label><br>
@@ -160,47 +201,47 @@ function renderSettings(req, res) {
 
 app.route('/settings')
   .get(renderSettings)
-  .post((req, res) => {
+  .post(async (req, res) => {
     const { port, source, dest } = req.body;
-    if (port && source && dest) {
-      fs.writeFileSync(SETTINGS_FILE, `${port}\n${source}\n${dest}`);
-      settings.port = port;
-      settings.source = source;
-      settings.dest = dest;
-      console.log('\n  _ Settings saved\n');
+    const portNum = parseInt(port, 10);
+    if (port && source && dest && portNum >= 1 && portNum <= 65535) {
+      try {
+        await fs.promises.mkdir(SETTINGS_DIR, { recursive: true });
+        await fs.promises.writeFile(SETTINGS_FILE, `${portNum}\n${source}\n${dest}`);
+        settings.port = String(portNum);
+        settings.source = source;
+        settings.dest = dest;
+        console.log('\n  _ Settings saved\n');
+      } catch (err) {
+        console.error('Error saving settings:', err);
+      }
     }
     renderSettings(req, res);
   });
 
 // Console menu
-function menu() {
-  rl.question('\n  [1] SORT  [2] Settings  [3] Help  [4] Exit\n      : ', (answer) => {
-    switch (answer) {
-      case '1':
-        open(`http://localhost:${settings.port}`);
-        break;
-      case '2':
-        open(`http://localhost:${settings.port}/settings`);
-        break;
-      case '3':
-        open('https://github.com/Contraculto/sortino/blob/master/README.md');
-        break;
-      case '4':
-        console.log('\n  Good bye!');
-        rl.close();
-        process.exit(0);
-        return;
-      default:
-        console.log('\n  Invalid option');
-    }
-    menu();
-  });
+async function menu(rl) {
+  const answer = await rl.question('\n  [1] SORT  [2] Settings  [3] Help  [4] Exit\n      : ');
+  switch (answer) {
+    case '1':
+      await open(`http://localhost:${settings.port}`);
+      break;
+    case '2':
+      await open(`http://localhost:${settings.port}/settings`);
+      break;
+    case '3':
+      await open('https://github.com/Contraculto/sortino/blob/master/README.md');
+      break;
+    case '4':
+      console.log('\n  Good bye!');
+      rl.close();
+      process.exit(0);
+      return;
+    default:
+      console.log('\n  Invalid option');
+  }
+  await menu(rl);
 }
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
 // Banner
 console.log();
@@ -217,30 +258,35 @@ console.log();
 console.log();
 
 // Load settings and start server
-function startServer() {
+async function startServer() {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
   app.listen(settings.port, () => {
     console.log(`  Listening on http://localhost:${settings.port}`);
     console.log();
-    menu();
+    menu(rl);
   });
 }
 
-if (fs.existsSync(SETTINGS_FILE)) {
-  const lines = fs.readFileSync(SETTINGS_FILE, 'utf8').trim().split('\n');
+try {
+  await fs.promises.access(SETTINGS_FILE);
+  const content = await fs.promises.readFile(SETTINGS_FILE, 'utf8');
+  const lines = content.trim().split('\n');
   settings.port = lines[0];
   settings.source = lines[1];
   settings.dest = lines[2];
   startServer();
-} else {
+} catch {
   console.log('  Creating default settings file...');
   settings.port = '1234';
   settings.source = path.join(os.homedir(), 'Pictures', 'in');
   settings.dest = path.join(os.homedir(), 'Pictures', 'out');
-  fs.writeFileSync(SETTINGS_FILE, `${settings.port}\n${settings.source}\n${settings.dest}`);
+  await fs.promises.mkdir(SETTINGS_DIR, { recursive: true });
+  await fs.promises.writeFile(SETTINGS_FILE, `${settings.port}\n${settings.source}\n${settings.dest}`);
   console.log('  Settings file created, opening settings page');
-  app.listen(settings.port, () => {
-    open(`http://localhost:${settings.port}/settings`);
-    menu();
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  app.listen(settings.port, async () => {
+    await open(`http://localhost:${settings.port}/settings`);
+    menu(rl);
   });
 }
 

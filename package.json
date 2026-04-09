@@ -4,7 +4,9 @@
   "description": "Sort images in folders",
   "bin": "./index.js",
   "main": "index.js",
+  "type": "module",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -31,6 +33,6 @@
   "dependencies": {
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
-    "open": "^8.4.2"
+    "open": "^10.2.0"
   }
 }
