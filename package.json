@@ -3,10 +3,12 @@
   "version": "2.0.0",
   "description": "Sort images in folders",
   "bin": "./index.js",
-  "main": "index.js",
+  "main": "electron-main.js",
   "type": "module",
   "scripts": {
     "start": "node index.js",
+    "electron": "electron .",
+    "dist": "electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -34,5 +36,31 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "open": "^10.2.0"
+  },
+  "devDependencies": {
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.contraculto.sortino",
+    "productName": "Sortino",
+    "icon": "sortino.png",
+    "files": [
+      "electron-main.js",
+      "server.js",
+      "sortino.png"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
   }
 }
